@@ -1,36 +1,30 @@
 import express from "express";
-import fetch from "node-fetch";
+import bodyParser from "body-parser";
 import dotenv from "dotenv";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 dotenv.config();
 const app = express();
-app.use(express.json());
+app.use(bodyParser.json());
 
-// Example endpoint for Roblox
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+
 app.post("/chat", async (req, res) => {
   try {
     const { message } = req.body;
+    if (!message) {
+      return res.status(400).json({ error: "Message is required" });
+    }
 
-    // Example: call OpenAI or Gemini API here
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`
-      },
-      body: JSON.stringify({
-        model: "gpt-4o-mini",
-        messages: [{ role: "user", content: message }]
-      })
-    });
+    const result = await model.generateContent(message);
+    const responseText = result.response.text();
 
-    const data = await response.json();
-    res.json({ reply: data.choices[0].message.content });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Something went wrong" });
+    res.json({ reply: responseText });
+  } catch (error) {
+    console.error("Gemini API error:", error);
+    res.status(500).json({ error: error.message || "Something went wrong" });
   }
 });
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+app.listen(3000, () => console.log("Server running on port 3000"));
